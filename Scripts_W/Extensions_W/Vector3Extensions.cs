@@ -9,9 +9,9 @@ public static class Vector3Extensions
     //Example: transform.position = otherTransform.position.With(y: 3f); --> Equals to: transform.position = new Vector3(otherTransform.position.x, 3f, otherTransform.position.z);
     public static Vector3 With(this Vector3 original, float? x = null, float? y = null, float? z = null)
     {
-        float newX = x.HasValue ? x.Value : original.x;
-        float newY = y.HasValue ? y.Value : original.y;
-        float newZ = z.HasValue ? z.Value : original.z;
+        float newX = x ?? original.x;
+        float newY = y ?? original.y;
+        float newZ = z ?? original.z;
         return new Vector3(newX, newY, newZ);
     }
 }
