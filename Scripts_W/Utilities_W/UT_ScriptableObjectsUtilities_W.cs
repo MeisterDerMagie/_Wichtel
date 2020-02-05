@@ -13,9 +13,13 @@ public class UT_ScriptableObjectsUtilities_W
     //Finde alle ScriptableObjects eines Typs im Projekt
     public static List<T> GetAllScriptableObjectInstances<T>() where T : ScriptableObject
     {
-        string[]
-            guids = AssetDatabase.FindAssets("t:" + typeof(T)
-                                                 .Name); //FindAssets uses tags check documentation for more info
+        string[] foldersToSearch = {"Assets"};
+        return GetAllScriptableObjectInstances<T>(foldersToSearch);
+    }
+    
+    public static List<T> GetAllScriptableObjectInstances<T>(string[] _foldersToSearch) where T : ScriptableObject
+    {
+        string[] guids = AssetDatabase.FindAssets("t:" + typeof(T).Name, _foldersToSearch); //FindAssets uses tags check documentation for more info
         List<T> a = new List<T>();
         for (int i = 0; i < guids.Length; i++) //probably could get optimized 
         {
