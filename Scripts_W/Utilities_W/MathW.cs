@@ -12,5 +12,16 @@ public static class MathW
     {
         return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
     }
+    
+    /// <summary>
+    /// returns f rooted by n
+    /// </summary>
+    /// <param name="f">Zahl, von der die Wurzel gezogen werden soll</param>
+    /// <param name="n">n-te Wurzel</param>
+    /// <returns></returns>
+    public static float NthRoot(float f, float n)
+    {
+        return Mathf.Pow(f, 1.0f / n);
+    }
 }
 }
