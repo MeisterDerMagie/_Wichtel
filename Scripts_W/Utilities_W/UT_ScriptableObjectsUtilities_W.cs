@@ -17,7 +17,7 @@ public class UT_ScriptableObjectsUtilities_W
         return GetAllScriptableObjectInstances<T>(foldersToSearch);
     }
     
-    public static List<T> GetAllScriptableObjectInstances<T>(string[] _foldersToSearch) where T : ScriptableObject
+    public static List<T> GetAllScriptableObjectInstances<T>(string[] _foldersToSearch) where T : UnityEngine.Object
     {
         string[] guids = AssetDatabase.FindAssets("t:" + typeof(T).Name, _foldersToSearch); //FindAssets uses tags check documentation for more info
         List<T> a = new List<T>();
