@@ -11,13 +11,13 @@ namespace Wichtel
 public class UT_ScriptableObjectsUtilities_W
 {
     //Finde alle ScriptableObjects eines Typs im Projekt
-    public static List<T> GetAllScriptableObjectInstances<T>() where T : ScriptableObject
+    public static List<T> GetScriptableObjectInstances<T>() where T : ScriptableObject
     {
         string[] foldersToSearch = {"Assets"};
-        return GetAllScriptableObjectInstances<T>(foldersToSearch);
+        return GetScriptableObjectInstances<T>(foldersToSearch);
     }
     
-    public static List<T> GetAllScriptableObjectInstances<T>(string[] _foldersToSearch) where T : UnityEngine.Object
+    public static List<T> GetScriptableObjectInstances<T>(string[] _foldersToSearch) where T : UnityEngine.Object
     {
         string[] guids = AssetDatabase.FindAssets("t:" + typeof(T).Name, _foldersToSearch); //FindAssets uses tags check documentation for more info
         List<T> a = new List<T>();
