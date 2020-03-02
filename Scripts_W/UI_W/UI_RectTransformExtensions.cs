@@ -38,7 +38,22 @@ public static class UI_RectTransformExtensions
                 &&cRect.Contains(corners[2])
                 &&cRect.Contains(corners[3]);
     }
-
+    
+    //-- RectTransformBounds --
+    //Basiert auf: http://answers.unity.com/answers/1628573/view.html
+    private static readonly Vector3[] WorldCorners = new Vector3[4];
+    public static Bounds GetRectTransformBounds(RectTransform transform)
+    {
+        transform.GetWorldCorners(WorldCorners);
+        var bounds = new Bounds(WorldCorners[0], Vector3.zero);
+        for(var i = 1; i < 4; ++i)
+        {
+            bounds.Encapsulate(WorldCorners[i]);
+        }
+        return bounds;
+    }
+    //-- --
+    
     public static void SetLeft(this RectTransform rt, float left)
     {
         rt.offsetMin = new Vector2(left, rt.offsetMin.y);
