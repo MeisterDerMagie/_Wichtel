@@ -6,6 +6,7 @@ using UnityEditor.Experimental.SceneManagement;
 using UnityEditor.SceneManagement;
 #endif
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Wichtel.Extensions{
 public static class ComponentExtensions
@@ -21,6 +22,7 @@ public static class ComponentExtensions
     public static void MoveComponentAtIndex(this Component _component, int _index)
     {
         if (_component.IsAssetOnDisk()) return;
+        if (PrefabUtility.IsPartOfPrefabAsset(_component)) return;
         
         List<Component> components = new List<Component>(_component.gameObject.GetComponents<Component>());
         var indexOfThisComponent = components.IndexOf(_component);
@@ -40,6 +42,28 @@ public static class ComponentExtensions
                 UnityEditorInternal.ComponentUtility.MoveComponentDown(_component);
             }
         }
+    }
+
+    public static List<T> FindAllComponentsOfType<T>() where T : Component
+    {
+        List<T> components = new List<T>();
+        
+        //get all root objects
+        var allRootObjects = new List<GameObject>();
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            var scene = SceneManager.GetSceneAt(i);
+            allRootObjects.AddRange(scene.GetRootGameObjects());
+        }
+        
+        //get all Components in root objects
+        foreach (var rootObject in allRootObjects)
+        {
+            var componentsInChildrenAndOnRootobjectSelf = rootObject.GetComponentsInChildren<T>(true);
+            components.AddRange(componentsInChildrenAndOnRootobjectSelf);
+        }
+
+        return components;
     }
     
     public static bool IsAssetOnDisk(this Component _component)
