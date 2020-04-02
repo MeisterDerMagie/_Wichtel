@@ -22,7 +22,11 @@ public static class ComponentExtensions
     public static void MoveComponentAtIndex(this Component _component, int _index)
     {
         if (_component.IsAssetOnDisk()) return;
-        if (PrefabUtility.IsPartOfPrefabAsset(_component)) return;
+        if(PrefabUtility.IsPartOfAnyPrefab(_component)) return;
+
+        bool IsPrefabInstance(GameObject go) { return PrefabUtility.GetPrefabParent(go) != null && PrefabUtility.GetPrefabObject(go) != null; }
+        Debug.Log(_component.gameObject.name + ": " + IsPrefabInstance(_component.gameObject));
+        
         
         List<Component> components = new List<Component>(_component.gameObject.GetComponents<Component>());
         var indexOfThisComponent = components.IndexOf(_component);
