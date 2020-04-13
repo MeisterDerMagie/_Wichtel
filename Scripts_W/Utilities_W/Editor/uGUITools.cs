@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿#if UNITY_EDITOR
+using UnityEditor;
 using UnityEngine;
 
 public class uGUITools : MonoBehaviour {
@@ -94,3 +95,4 @@ public class uGUITools : MonoBehaviour {
 		}
 	}
 }
+#endif

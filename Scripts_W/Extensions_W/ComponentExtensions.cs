@@ -11,6 +11,28 @@ using UnityEngine.SceneManagement;
 namespace Wichtel.Extensions{
 public static class ComponentExtensions
 {
+    public static List<T> FindAllComponentsOfType<T>() where T : Component
+    {
+        List<T> components = new List<T>();
+        
+        //get all root objects
+        var allRootObjects = new List<GameObject>();
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            var scene = SceneManager.GetSceneAt(i);
+            allRootObjects.AddRange(scene.GetRootGameObjects());
+        }
+        
+        //get all Components in root objects
+        foreach (var rootObject in allRootObjects)
+        {
+            var componentsInChildrenAndOnRootobjectSelf = rootObject.GetComponentsInChildren<T>(true);
+            components.AddRange(componentsInChildrenAndOnRootobjectSelf);
+        }
+
+        return components;
+    }
+    
     #if UNITY_EDITOR
     //Schiebt eine Component an den angegebenen Platz. 0 ist immer die Transform-Component
 
@@ -48,28 +70,6 @@ public static class ComponentExtensions
         }
     }
 
-    public static List<T> FindAllComponentsOfType<T>() where T : Component
-    {
-        List<T> components = new List<T>();
-        
-        //get all root objects
-        var allRootObjects = new List<GameObject>();
-        for (int i = 0; i < SceneManager.sceneCount; i++)
-        {
-            var scene = SceneManager.GetSceneAt(i);
-            allRootObjects.AddRange(scene.GetRootGameObjects());
-        }
-        
-        //get all Components in root objects
-        foreach (var rootObject in allRootObjects)
-        {
-            var componentsInChildrenAndOnRootobjectSelf = rootObject.GetComponentsInChildren<T>(true);
-            components.AddRange(componentsInChildrenAndOnRootobjectSelf);
-        }
-
-        return components;
-    }
-    
     public static bool IsAssetOnDisk(this Component _component)
     {
         return PrefabUtility.IsPartOfPrefabAsset(_component) || IsEditingInPrefabMode(_component);
