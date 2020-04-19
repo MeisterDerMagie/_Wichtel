@@ -11,6 +11,7 @@ using UnityEngine.SceneManagement;
 namespace Wichtel.Extensions{
 public static class ComponentExtensions
 {
+    //Caution: Doesn't find components that are on "Don't Destroy on Load"-GameObjects!
     public static List<T> FindAllComponentsOfType<T>() where T : Component
     {
         List<T> components = new List<T>();
