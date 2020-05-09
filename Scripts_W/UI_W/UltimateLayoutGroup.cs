@@ -6,6 +6,7 @@ using System.Linq;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using Wichtel;
 
 namespace Haferbrei {
 public class UltimateLayoutGroup : LayoutGroup
@@ -29,30 +30,36 @@ public class UltimateLayoutGroup : LayoutGroup
 
     public enum FillDirection
     {
-        Horizontally,
-        Vertically
-    }
-
-    public enum Grid
-    {
-        Fixed,
-        Dynamic
+        Horizontal,
+        Vertical
     }
     
+    public enum FillDirectionHorizontal
+    {
+        LeftToRight,
+        RightToLeft
+    }
+
+    public enum FillDirectionVertical
+    {
+        TopToBottom,
+        BottomToTop
+    }
+
     public Vector2 spacing;
     public FitType fitType;
     public FillDirection fillDirection;
+    public FillDirectionHorizontal fillDirectionHorizontal;
+    public FillDirectionVertical fillDirectionVertical;
     [Min(1)]public int rows;
     [Min(1)]public int columns;
-    public Sizing sizingX;
-    public Sizing sizingY;
-    public Grid gridX, gridY;
+    public Sizing defaultSizingX;
+    public Sizing defaultSizingY;
     public Vector2 fixedCellSize;
     [Min(0.00001f)] public Vector2 cellAspectRatio;
     public bool ignoreInactiveChildren = true;
     public bool useChildScaleX, useChildScaleY;
     public bool childForceExpandX, childForceExpandY;
-    public bool allowOverlapX, allowOverlapY;
     public bool fitContentSizeX, fitContentSizeY;
 
     [SerializeField, HideInInspector] private Sizing sizingXPreviousValue;
@@ -60,15 +67,13 @@ public class UltimateLayoutGroup : LayoutGroup
     [SerializeField, HideInInspector] private Sizing sizingYPreviousValue;
     [SerializeField, HideInInspector] private Sizing sizingYcached;
 
-    private bool keepChildSize_DynamicGridX => (sizingX == Sizing.KeepChildSize && gridX == Grid.Dynamic);
-    private bool keepChildSize_DynamicGridY => (sizingY == Sizing.KeepChildSize && gridY == Grid.Dynamic);
-    private bool keepChildSize_FixedGridX => (sizingX == Sizing.KeepChildSize && gridX == Grid.Fixed);
-    private bool keepChildSize_FixedGridY => (sizingY == Sizing.KeepChildSize && gridY == Grid.Fixed);
-    
     private readonly List<RectTransform> rectChildrenNew = new List<RectTransform>();
     private readonly List<Component> toIgnoreList = new List<Component>();
     private readonly List<float> childrenSizesX = new List<float>();
     private readonly List<float> childrenSizesY = new List<float>();
+
+    private readonly List<Sizing> sizingsX = new List<Sizing>();
+    private readonly List<Sizing> sizingsY = new List<Sizing>();
 
     public override void CalculateLayoutInputHorizontal()
     {
@@ -114,23 +119,23 @@ public class UltimateLayoutGroup : LayoutGroup
         //-- fixed AspectRatio requires X and Y to be set to AspectRatio --
         #region FixedAspectRatio
         //- User chose FixedAspectRatio
-        if ((sizingX == Sizing.FixedAspectRatio && sizingXPreviousValue != Sizing.FixedAspectRatio) || (sizingY == Sizing.FixedAspectRatio && sizingYPreviousValue != Sizing.FixedAspectRatio))
+        if ((defaultSizingX == Sizing.FixedAspectRatio && sizingXPreviousValue != Sizing.FixedAspectRatio) || (defaultSizingY == Sizing.FixedAspectRatio && sizingYPreviousValue != Sizing.FixedAspectRatio))
         {
-            if(sizingX != Sizing.FixedAspectRatio) sizingXcached = sizingX; //cache sizingX
-            if(sizingY != Sizing.FixedAspectRatio) sizingYcached = sizingY; //cache sizingY
-            sizingX = Sizing.FixedAspectRatio;
-            sizingY = Sizing.FixedAspectRatio;
+            if(defaultSizingX != Sizing.FixedAspectRatio) sizingXcached = defaultSizingX; //cache sizingX
+            if(defaultSizingY != Sizing.FixedAspectRatio) sizingYcached = defaultSizingY; //cache sizingY
+            defaultSizingX = Sizing.FixedAspectRatio;
+            defaultSizingY = Sizing.FixedAspectRatio;
         }
         //- -
         //- User chose other mode than FixedAspectRatio -
-        if ((sizingX != Sizing.FixedAspectRatio && sizingXPreviousValue == Sizing.FixedAspectRatio) || (sizingY != Sizing.FixedAspectRatio && sizingYPreviousValue == Sizing.FixedAspectRatio))
+        if ((defaultSizingX != Sizing.FixedAspectRatio && sizingXPreviousValue == Sizing.FixedAspectRatio) || (defaultSizingY != Sizing.FixedAspectRatio && sizingYPreviousValue == Sizing.FixedAspectRatio))
         {
-            sizingX = sizingXcached; //restore cacheX
-            sizingY = sizingYcached; //restore cacheY
+            defaultSizingX = sizingXcached; //restore cacheX
+            defaultSizingY = sizingYcached; //restore cacheY
         }
         //- -
-        sizingXPreviousValue = sizingX;
-        sizingYPreviousValue = sizingY;
+        sizingXPreviousValue = defaultSizingX;
+        sizingYPreviousValue = defaultSizingY;
         #endregion
         //-- --
 
@@ -156,65 +161,37 @@ public class UltimateLayoutGroup : LayoutGroup
         {
             columns = Mathf.CeilToInt(rectChildrenNew.Count / (float)rows);
         }
-            
-            
+        
         float gridCellWidth = (parentWidth / (float)columns) - (spacing.x * (float)(columns-1) / (float)columns) - (padding.left / (float)columns) - (padding.right / (float)columns);
         float gridCellHeight = (parentHeight / (float)rows) - (spacing.y * (float)(rows-1) / (float)rows) - (padding.top / (float)rows) - (padding.bottom / (float)rows);
-            
-        //cellSizeX
-        #region Uniform_CellSizeX
-        if (sizingX == Sizing.KeepChildSize)
-        {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesX.Add(child.rect.width);
-            }
-        }
-        else if (sizingX == Sizing.Fit)
-        {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesX.Add(gridCellWidth);
-            }
-        }
-        else if (sizingX == Sizing.FixedSize)
-        {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesX.Add(fixedCellSize.x);
-            }
-        }
-        #endregion
 
-        //cellSizeY
-        #region Uniform_CellSizeY
-        if (sizingY == Sizing.KeepChildSize)
+        //-- LayoutElements --
+        var layoutElements = new UltimateLayoutElement[rectChildrenNew.Count];
+
+        sizingsX.Clear();
+        sizingsY.Clear();
+        for (int i = 0; i < rectChildrenNew.Count; i++)
         {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesY.Add(child.rect.height);
-            }
+            layoutElements[i] = rectChildrenNew[i].GetComponent<UltimateLayoutElement>();
+            var sizingX = (layoutElements[i] == null) ? defaultSizingX : layoutElements[i].sizingX;
+            var sizingY = (layoutElements[i] == null) ? defaultSizingY : layoutElements[i].sizingY;
+            sizingsX.Add(sizingX);
+            sizingsY.Add(sizingY);
         }
-        else if (sizingY == Sizing.Fit)
+        //-- --
+        
+        //-- CellSize --
+        for (int i = 0; i < rectChildrenNew.Count; i++)
         {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesY.Add(gridCellHeight);
-            }
-        }
-        else if (sizingY == Sizing.FixedSize)
-        {
-            foreach (var child in rectChildrenNew)
-            {
-                childrenSizesY.Add(fixedCellSize.y);
-            }
-        }
-        #endregion
-        //cellSizeX&Y (FixedAspectRatio)
-        #region Uniform_CellSizeX&Y (FixedAspectRatio)
-        if (sizingX == Sizing.FixedAspectRatio || sizingY == Sizing.FixedAspectRatio)
-        {
-            foreach (var child in rectChildrenNew)
+            if      (sizingsX[i] == Sizing.KeepChildSize) childrenSizesX.Add(rectChildrenNew[i].rect.width);
+            else if (sizingsX[i] == Sizing.Fit)           childrenSizesX.Add(gridCellWidth);
+            else if (sizingsX[i] == Sizing.FixedSize)     childrenSizesX.Add(fixedCellSize.x);
+            
+            if      (sizingsY[i] == Sizing.KeepChildSize) childrenSizesY.Add(rectChildrenNew[i].rect.height);
+            else if (sizingsY[i] == Sizing.Fit)           childrenSizesY.Add(gridCellHeight);
+            else if (sizingsY[i] == Sizing.FixedSize)     childrenSizesY.Add(fixedCellSize.y);
+
+            if (sizingsX[i] == Sizing.FixedAspectRatio && sizingsX[i] == Sizing.FixedAspectRatio)
             {
                 float childAspectRatio = cellAspectRatio.x / cellAspectRatio.y;
                 float gridAspectRatio = gridCellWidth / gridCellHeight;
@@ -226,40 +203,28 @@ public class UltimateLayoutGroup : LayoutGroup
                 childrenSizesY.Add(gridCellHeight);
             }
         }
-        #endregion
-            
+        //-- --
+        
         //-- CellPosition --
-        //-- Get dynamic grid values --
+        //-- Get grid Height and Width --
         float[] columnWidths = new float[columns];
         float[] rowHeights = new float[rows];
-        if (keepChildSize_DynamicGridX || keepChildSize_DynamicGridY)
+        
+        for (int i = 0; i < rectChildrenNew.Count; i++)
         {
-            for (int i = 0; i < rectChildrenNew.Count; i++)
-            {
-                int rowCount;
-                int columnCount;
-                if (fillDirection == FillDirection.Horizontally)
-                {
-                    rowCount = i / columns;
-                    columnCount = i % columns;
-                }
-                else
-                {
-                    columnCount = i / rows;
-                    rowCount = i % rows;
-                }
+            (int rowCount, int columnCount) = CalculateRowAndColumnCount(i);
 
-                columnWidths[columnCount] = Mathf.Max(columnWidths[columnCount], childrenSizesX[i]);
-                rowHeights[rowCount] = Mathf.Max(rowHeights[rowCount], childrenSizesY[i]);
-            }
+            columnWidths[columnCount] = Mathf.Max(columnWidths[columnCount], childrenSizesX[i]);
+            rowHeights[rowCount] = Mathf.Max(rowHeights[rowCount], childrenSizesY[i]);
         }
+        
         //-- --
         
         //- ChildForceExpand & fitToContentSize-
-        float totalCellWidthOfOneRow = keepChildSize_DynamicGridX ? columnWidths.Sum() : childrenSizesX.Take(columns).Sum();
+        float totalCellWidthOfOneRow = columnWidths.Sum();
         float totalRowWidth = totalCellWidthOfOneRow + (spacing.x * (float)(columns-1)) + padding.left + padding.right;
 
-        float totalCellHeightOfOneColumn = keepChildSize_DynamicGridY ? rowHeights.Sum() :childrenSizesY.Take(rows).Sum();
+        float totalCellHeightOfOneColumn = rowHeights.Sum();
         float totalColumnHeight = totalCellHeightOfOneColumn + (spacing.y * (float) (rows - 1)) + padding.bottom + padding.top;
 
         float excessParentWidth = 0f;
@@ -290,28 +255,12 @@ public class UltimateLayoutGroup : LayoutGroup
 
         for (int i = 0; i < rectChildrenNew.Count; i++)
         {
-            int rowCount;
-            int columnCount;
-            if (fillDirection == FillDirection.Horizontally)
-            {
-                rowCount = i / columns;
-                columnCount = i % columns;
-            }
-            else
-            {
-                columnCount = i / rows;
-                rowCount = i % rows;
-            }
+            (int rowCount, int columnCount) = CalculateRowAndColumnCount(i);
 
             var item = rectChildrenNew[i];
 
-            float cellWidth = childrenSizesX[i];
-            float cellHeight = childrenSizesY[i];
-
-            if (keepChildSize_FixedGridX) cellWidth = gridCellWidth;
-            if (keepChildSize_FixedGridY) cellHeight = gridCellHeight;
-            if (keepChildSize_DynamicGridX) cellWidth = columnWidths[columnCount];
-            if (keepChildSize_DynamicGridY) cellHeight = rowHeights[rowCount];
+            float cellWidth = columnWidths[columnCount];
+            float cellHeight = rowHeights[rowCount];
 
             //-- ChildAlignment --
             #region ChildAlignment
@@ -319,39 +268,70 @@ public class UltimateLayoutGroup : LayoutGroup
             float alignmentOffsetY = 0f;
             if (childAlignment == TextAnchor.LowerCenter || childAlignment == TextAnchor.MiddleCenter || childAlignment == TextAnchor.UpperCenter)
             {
-                alignmentOffsetX = keepChildSize_DynamicGridX ? ((columnWidths[columnCount] / 2f) - (childrenSizesX[i] / 2f)) : (gridCellWidth / 2f) - (childrenSizesX[i] / 2f);
+                alignmentOffsetX = (columnWidths[columnCount] / 2f) - (childrenSizesX[i] / 2f);
             }
             if (childAlignment == TextAnchor.LowerRight || childAlignment == TextAnchor.MiddleRight || childAlignment == TextAnchor.UpperRight)
             {
-                alignmentOffsetX = keepChildSize_DynamicGridX ? (columnWidths[columnCount] - childrenSizesX[i]) : (gridCellWidth - childrenSizesX[i]);
+                alignmentOffsetX = columnWidths[columnCount] - childrenSizesX[i];
             }
             if (childAlignment == TextAnchor.MiddleLeft || childAlignment == TextAnchor.MiddleCenter || childAlignment == TextAnchor.MiddleRight)
             {
-                alignmentOffsetY = keepChildSize_DynamicGridY ? (rowHeights[rowCount]/2f - childrenSizesY[i]/2f) : (gridCellHeight / 2f) - (childrenSizesY[i] / 2f);
+                alignmentOffsetY = (rowHeights[rowCount] / 2f) - (childrenSizesY[i] / 2f);
             }
             if (childAlignment == TextAnchor.LowerLeft || childAlignment == TextAnchor.LowerCenter || childAlignment == TextAnchor.LowerRight)
             {
-                alignmentOffsetY = keepChildSize_DynamicGridY ? rowHeights[rowCount] - childrenSizesY[i] : gridCellHeight - childrenSizesY[i];
+                alignmentOffsetY = rowHeights[rowCount] - childrenSizesY[i];
             }
             #endregion
             //-- --
 
-            float xPos = (allowOverlapX && (parentWidth < totalRowWidth)) ? (gridCellWidth * columnCount) : (cellWidth * columnCount);
-            float yPos = (allowOverlapY && (parentHeight < totalColumnHeight)) ? (gridCellHeight * rowCount) : (cellHeight * rowCount);
-
-            if (keepChildSize_DynamicGridX) xPos = columnWidths.Take(columnCount).Sum();
-            if (keepChildSize_DynamicGridY) yPos = rowHeights.Take(rowCount).Sum();
+            float xPos = columnWidths.Take(columnCount).Sum();
+            float yPos = rowHeights.Take(rowCount).Sum();
 
             xPos += (spacing.x * columnCount) + padding.left + ((excessParentWidth/Mathf.Max((columns-1f), 1f))*columnCount) + alignmentOffsetX;
             yPos += (spacing.y * rowCount) + padding.top + ((excessParentHeight/Mathf.Max((rows-1f), 1f))*rowCount) + alignmentOffsetY;
             
-            if(sizingX != Sizing.KeepChildSize) SetChildAlongAxis(item, 0, xPos, cellWidth);
-            else                                SetChildAlongAxis(item, 0, xPos);
+            if(defaultSizingX != Sizing.KeepChildSize) SetChildAlongAxis(item, 0, xPos, cellWidth);
+            else                                       SetChildAlongAxis(item, 0, xPos);
                 
-            if(sizingY != Sizing.KeepChildSize) SetChildAlongAxis(item, 1, yPos, cellHeight);
-            else                                SetChildAlongAxis(item, 1, yPos);
+            if(defaultSizingY != Sizing.KeepChildSize) SetChildAlongAxis(item, 1, yPos, cellHeight);
+            else                                       SetChildAlongAxis(item, 1, yPos);
         }
         #endregion
+    }
+    
+    private (int, int) CalculateRowAndColumnCount(int i)
+    {
+        int rowCount;
+        int columnCount;
+
+
+        int originRow;
+        int originColumn;
+
+        circularInt bla = new circularInt();
+
+        int blaa = bla;
+        
+        
+        if (fillDirection == FillDirection.Horizontal)
+        {
+            if (fillDirectionHorizontal == FillDirectionHorizontal.LeftToRight) columnCount = i % columns;
+            else                                                                columnCount = columns-1-(i % columns);
+        
+            if (fillDirectionVertical == FillDirectionVertical.TopToBottom) rowCount = i / columns;
+            else                                                            rowCount = rows-1-(i/columns);
+        }
+        else
+        {
+            if (fillDirectionVertical == FillDirectionVertical.TopToBottom) rowCount = i % rows;
+            else                                                            rowCount = rows-1-(i % rows);
+        
+            if (fillDirectionHorizontal == FillDirectionHorizontal.LeftToRight) columnCount = i / rows;
+            else                                                                columnCount = columns-1-(i/rows);
+        }
+        
+        return (rowCount, columnCount);
     }
 
     public override void CalculateLayoutInputVertical(){}
