@@ -1,8 +1,9 @@
-﻿//(c) copyright by Martin M. Klöckener
+﻿﻿//(c) copyright by Martin M. Klöckener
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Sirenix.OdinInspector;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -299,7 +300,7 @@ public class UltimateLayoutGroup : LayoutGroup
         }
         #endregion
     }
-    
+
     private (int, int) CalculateRowAndColumnCount(int i)
     {
         int rowCount;
@@ -312,8 +313,13 @@ public class UltimateLayoutGroup : LayoutGroup
         circularInt bla = new circularInt();
 
         int blaa = bla;
-        
-        
+
+        circularInt asdf = 5 + bla + 5;
+
+        bool asdfd = (3 == bla);
+
+        //BLABLABLABLA ToDO: hier weiter arbeiten :D
+
         if (fillDirection == FillDirection.Horizontal)
         {
             if (fillDirectionHorizontal == FillDirectionHorizontal.LeftToRight) columnCount = i % columns;
