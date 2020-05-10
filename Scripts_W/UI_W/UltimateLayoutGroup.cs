@@ -300,6 +300,22 @@ public class UltimateLayoutGroup : LayoutGroup
         }
         #endregion
     }
+    
+    public circularInt CircularInt = new circularInt(6, 0, 5);
+
+    [Button]
+    public void SetCircularInt(int value, int minValue, int maxValue)
+    {
+        CircularInt = new circularInt(value, minValue, maxValue);
+        Debug.Log("Value set to: " + CircularInt);
+    }
+    
+    [Button]
+    public void Circulato()
+    {
+        CircularInt--;
+        Debug.Log(CircularInt);
+    }
 
     private (int, int) CalculateRowAndColumnCount(int i)
     {
