@@ -37,7 +37,7 @@ public class UltimateGridLayoutEditor : Editor
 
         fitType = serializedObject.FindProperty("fitType");
         fillDirection = serializedObject.FindProperty("fillDirection");
-        fillOriginHorizontal = serializedObject.FindProperty("fillOriginVertical");
+        fillOriginHorizontal = serializedObject.FindProperty("fillOriginHorizontal");
         fillOriginVertical = serializedObject.FindProperty("fillOriginVertical");
         rows = serializedObject.FindProperty("rows");
         columns = serializedObject.FindProperty("columns");
