@@ -4,13 +4,15 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Sirenix.OdinInspector;
+using TMPro;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Wichtel;
+using Wichtel.Extensions;
 
-namespace Haferbrei {
-public class UltimateLayoutGroup : LayoutGroup
+ namespace Haferbrei {
+public class UltimateGridLayout : LayoutGroup
 {
     public enum FitType
     {
@@ -35,31 +37,30 @@ public class UltimateLayoutGroup : LayoutGroup
         Vertical
     }
     
-    public enum FillDirectionHorizontal
+    public enum FillOriginHorizontal
     {
-        LeftToRight,
-        RightToLeft
+        Left,
+        Right
     }
 
-    public enum FillDirectionVertical
+    public enum FillOriginVertical
     {
-        TopToBottom,
-        BottomToTop
+        Top,
+        Bottom
     }
 
     public Vector2 spacing;
     public FitType fitType;
     public FillDirection fillDirection;
-    public FillDirectionHorizontal fillDirectionHorizontal;
-    public FillDirectionVertical fillDirectionVertical;
+    public FillOriginHorizontal fillOriginHorizontal;
+    public FillOriginVertical fillOriginVertical;
     [Min(1)]public int rows;
     [Min(1)]public int columns;
-    public Sizing defaultSizingX;
-    public Sizing defaultSizingY;
+    public Sizing sizingX;
+    public Sizing sizingY;
     public Vector2 fixedCellSize;
     [Min(0.00001f)] public Vector2 cellAspectRatio;
     public bool ignoreInactiveChildren = true;
-    public bool useChildScaleX, useChildScaleY;
     public bool childForceExpandX, childForceExpandY;
     public bool fitContentSizeX, fitContentSizeY;
 
@@ -72,9 +73,6 @@ public class UltimateLayoutGroup : LayoutGroup
     private readonly List<Component> toIgnoreList = new List<Component>();
     private readonly List<float> childrenSizesX = new List<float>();
     private readonly List<float> childrenSizesY = new List<float>();
-
-    private readonly List<Sizing> sizingsX = new List<Sizing>();
-    private readonly List<Sizing> sizingsY = new List<Sizing>();
 
     public override void CalculateLayoutInputHorizontal()
     {
@@ -120,23 +118,23 @@ public class UltimateLayoutGroup : LayoutGroup
         //-- fixed AspectRatio requires X and Y to be set to AspectRatio --
         #region FixedAspectRatio
         //- User chose FixedAspectRatio
-        if ((defaultSizingX == Sizing.FixedAspectRatio && sizingXPreviousValue != Sizing.FixedAspectRatio) || (defaultSizingY == Sizing.FixedAspectRatio && sizingYPreviousValue != Sizing.FixedAspectRatio))
+        if ((sizingX == Sizing.FixedAspectRatio && sizingXPreviousValue != Sizing.FixedAspectRatio) || (sizingY == Sizing.FixedAspectRatio && sizingYPreviousValue != Sizing.FixedAspectRatio))
         {
-            if(defaultSizingX != Sizing.FixedAspectRatio) sizingXcached = defaultSizingX; //cache sizingX
-            if(defaultSizingY != Sizing.FixedAspectRatio) sizingYcached = defaultSizingY; //cache sizingY
-            defaultSizingX = Sizing.FixedAspectRatio;
-            defaultSizingY = Sizing.FixedAspectRatio;
+            if(sizingX != Sizing.FixedAspectRatio) sizingXcached = sizingX; //cache sizingX
+            if(sizingY != Sizing.FixedAspectRatio) sizingYcached = sizingY; //cache sizingY
+            sizingX = Sizing.FixedAspectRatio;
+            sizingY = Sizing.FixedAspectRatio;
         }
         //- -
         //- User chose other mode than FixedAspectRatio -
-        if ((defaultSizingX != Sizing.FixedAspectRatio && sizingXPreviousValue == Sizing.FixedAspectRatio) || (defaultSizingY != Sizing.FixedAspectRatio && sizingYPreviousValue == Sizing.FixedAspectRatio))
+        if ((sizingX != Sizing.FixedAspectRatio && sizingXPreviousValue == Sizing.FixedAspectRatio) || (sizingY != Sizing.FixedAspectRatio && sizingYPreviousValue == Sizing.FixedAspectRatio))
         {
-            defaultSizingX = sizingXcached; //restore cacheX
-            defaultSizingY = sizingYcached; //restore cacheY
+            sizingX = sizingXcached; //restore cacheX
+            sizingY = sizingYcached; //restore cacheY
         }
         //- -
-        sizingXPreviousValue = defaultSizingX;
-        sizingYPreviousValue = defaultSizingY;
+        sizingXPreviousValue = sizingX;
+        sizingYPreviousValue = sizingY;
         #endregion
         //-- --
 
@@ -166,33 +164,18 @@ public class UltimateLayoutGroup : LayoutGroup
         float gridCellWidth = (parentWidth / (float)columns) - (spacing.x * (float)(columns-1) / (float)columns) - (padding.left / (float)columns) - (padding.right / (float)columns);
         float gridCellHeight = (parentHeight / (float)rows) - (spacing.y * (float)(rows-1) / (float)rows) - (padding.top / (float)rows) - (padding.bottom / (float)rows);
 
-        //-- LayoutElements --
-        var layoutElements = new UltimateLayoutElement[rectChildrenNew.Count];
-
-        sizingsX.Clear();
-        sizingsY.Clear();
-        for (int i = 0; i < rectChildrenNew.Count; i++)
-        {
-            layoutElements[i] = rectChildrenNew[i].GetComponent<UltimateLayoutElement>();
-            var sizingX = (layoutElements[i] == null) ? defaultSizingX : layoutElements[i].sizingX;
-            var sizingY = (layoutElements[i] == null) ? defaultSizingY : layoutElements[i].sizingY;
-            sizingsX.Add(sizingX);
-            sizingsY.Add(sizingY);
-        }
-        //-- --
-        
         //-- CellSize --
         for (int i = 0; i < rectChildrenNew.Count; i++)
         {
-            if      (sizingsX[i] == Sizing.KeepChildSize) childrenSizesX.Add(rectChildrenNew[i].rect.width);
-            else if (sizingsX[i] == Sizing.Fit)           childrenSizesX.Add(gridCellWidth);
-            else if (sizingsX[i] == Sizing.FixedSize)     childrenSizesX.Add(fixedCellSize.x);
+            if      (sizingX == Sizing.KeepChildSize) childrenSizesX.Add( rectChildrenNew[i].rect.width);
+            else if (sizingX == Sizing.Fit)           childrenSizesX.Add( gridCellWidth);
+            else if (sizingX == Sizing.FixedSize)     childrenSizesX.Add( fixedCellSize.x);
             
-            if      (sizingsY[i] == Sizing.KeepChildSize) childrenSizesY.Add(rectChildrenNew[i].rect.height);
-            else if (sizingsY[i] == Sizing.Fit)           childrenSizesY.Add(gridCellHeight);
-            else if (sizingsY[i] == Sizing.FixedSize)     childrenSizesY.Add(fixedCellSize.y);
+            if      (sizingY == Sizing.KeepChildSize) childrenSizesY.Add( rectChildrenNew[i].rect.height);
+            else if (sizingY == Sizing.Fit)           childrenSizesY.Add( gridCellHeight);
+            else if (sizingY == Sizing.FixedSize)     childrenSizesY.Add( fixedCellSize.y);
 
-            if (sizingsX[i] == Sizing.FixedAspectRatio && sizingsX[i] == Sizing.FixedAspectRatio)
+            if (sizingX == Sizing.FixedAspectRatio && sizingX == Sizing.FixedAspectRatio)
             {
                 float childAspectRatio = cellAspectRatio.x / cellAspectRatio.y;
                 float gridAspectRatio = gridCellWidth / gridCellHeight;
@@ -210,6 +193,12 @@ public class UltimateLayoutGroup : LayoutGroup
         //-- Get grid Height and Width --
         float[] columnWidths = new float[columns];
         float[] rowHeights = new float[rows];
+
+        if (sizingX != Sizing.KeepChildSize && sizingX != Sizing.FixedSize) 
+        {
+            rowHeights.Populate(gridCellHeight);
+            columnWidths.Populate(gridCellWidth);
+        }
         
         for (int i = 0; i < rectChildrenNew.Count; i++)
         {
@@ -220,7 +209,7 @@ public class UltimateLayoutGroup : LayoutGroup
         }
         
         //-- --
-        
+
         //- ChildForceExpand & fitToContentSize-
         float totalCellWidthOfOneRow = columnWidths.Sum();
         float totalRowWidth = totalCellWidthOfOneRow + (spacing.x * (float)(columns-1)) + padding.left + padding.right;
@@ -285,71 +274,41 @@ public class UltimateLayoutGroup : LayoutGroup
             }
             #endregion
             //-- --
-
+            
             float xPos = columnWidths.Take(columnCount).Sum();
             float yPos = rowHeights.Take(rowCount).Sum();
 
             xPos += (spacing.x * columnCount) + padding.left + ((excessParentWidth/Mathf.Max((columns-1f), 1f))*columnCount) + alignmentOffsetX;
             yPos += (spacing.y * rowCount) + padding.top + ((excessParentHeight/Mathf.Max((rows-1f), 1f))*rowCount) + alignmentOffsetY;
             
-            if(defaultSizingX != Sizing.KeepChildSize) SetChildAlongAxis(item, 0, xPos, cellWidth);
+            if(sizingX != Sizing.KeepChildSize) SetChildAlongAxis(item, 0, xPos, cellWidth);
             else                                       SetChildAlongAxis(item, 0, xPos);
                 
-            if(defaultSizingY != Sizing.KeepChildSize) SetChildAlongAxis(item, 1, yPos, cellHeight);
+            if(sizingY != Sizing.KeepChildSize) SetChildAlongAxis(item, 1, yPos, cellHeight);
             else                                       SetChildAlongAxis(item, 1, yPos);
         }
         #endregion
-    }
-    
-    public circularInt CircularInt = new circularInt(6, 0, 5);
-
-    [Button]
-    public void SetCircularInt(int value, int minValue, int maxValue)
-    {
-        CircularInt = new circularInt(value, minValue, maxValue);
-        Debug.Log("Value set to: " + CircularInt);
-    }
-    
-    [Button]
-    public void Circulato()
-    {
-        CircularInt--;
-        Debug.Log(CircularInt);
     }
 
     private (int, int) CalculateRowAndColumnCount(int i)
     {
         int rowCount;
         int columnCount;
-
-
-        int originRow;
-        int originColumn;
-
-        circularInt bla = new circularInt();
-
-        int blaa = bla;
-
-        circularInt asdf = 5 + bla + 5;
-
-        bool asdfd = (3 == bla);
-
-        //BLABLABLABLA ToDO: hier weiter arbeiten :D
-
+        
         if (fillDirection == FillDirection.Horizontal)
         {
-            if (fillDirectionHorizontal == FillDirectionHorizontal.LeftToRight) columnCount = i % columns;
+            if (fillOriginHorizontal == FillOriginHorizontal.Left) columnCount = i % columns;
             else                                                                columnCount = columns-1-(i % columns);
         
-            if (fillDirectionVertical == FillDirectionVertical.TopToBottom) rowCount = i / columns;
+            if (fillOriginVertical == FillOriginVertical.Top) rowCount = i / columns;
             else                                                            rowCount = rows-1-(i/columns);
         }
         else
         {
-            if (fillDirectionVertical == FillDirectionVertical.TopToBottom) rowCount = i % rows;
+            if (fillOriginVertical == FillOriginVertical.Top) rowCount = i % rows;
             else                                                            rowCount = rows-1-(i % rows);
         
-            if (fillDirectionHorizontal == FillDirectionHorizontal.LeftToRight) columnCount = i / rows;
+            if (fillOriginHorizontal == FillOriginHorizontal.Left) columnCount = i / rows;
             else                                                                columnCount = columns-1-(i/rows);
         }
         
